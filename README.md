@@ -27,7 +27,11 @@ _Emby 增强/美化 插件 (适用于 Chrome 内核浏览器)_
 
 ## 使用须知
 
-如不需要媒体库鼠标悬浮后显示库名, 请更改 `static/css/style.css` 中 `.cardText` 的 `display` 属性为 `none`。
+媒体库标题显示模式可在 `static/css/style.css` 顶部的 `:root` 中切换 `--misty-library-label-mode`：
+
+- `always` — 常驻半透明标签, hover 加亮 **(默认)**
+- `hover` — 仅鼠标悬浮时显示
+- `none` — 完全隐藏
 
 ## 使用方法
 

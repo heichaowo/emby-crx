@@ -27,7 +27,11 @@ _Emby Enhancement/Beautification Plugin (for Chrome Core Browser)_
 
 ## Usage Instructions
 
-If you do not need the media library to display the library name on hover, change the `display` property of `.cardText` in `static/css/style.css` to `none`.
+Library label display mode can be toggled via `--misty-library-label-mode` in `:root` at the top of `static/css/style.css`:
+
+- `always` — Always visible at reduced opacity, brighter on hover **(default)**
+- `hover` — Only visible on mouse hover
+- `none` — Completely hidden
 
 ## Usage Method
 

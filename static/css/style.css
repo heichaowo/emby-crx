@@ -1,3 +1,13 @@
+:root {
+	/*
+	 * 媒体库标题显示模式开关
+	 * "always" = 常显 (默认, 半透明常驻, hover 加亮)
+	 * "hover"  = 仅 hover 显示
+	 * "none"   = 完全隐藏
+	 */
+	--misty-library-label-mode: always;
+}
+
 ::-webkit-scrollbar {
 	width: .3em !important;
 }
@@ -35,7 +45,7 @@
 	position: absolute;
 	bottom: 0;
 	left: 0;
-	display: flex; /* 如果不需要媒体库标题显示, 请将flex改为none */
+	display: flex;
 	align-items: center;
 	justify-content: center;
 	width: 100%;
@@ -47,14 +57,33 @@
 	font-size: 0.85em;
 	letter-spacing: 0.03em;
 	border-radius: 0 0 0.3em 0.3em;
-	transform: translateY(100%);
-	opacity: 0;
+	transform: translateY(0);
+	opacity: 0.6;
 	transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease;
 }
 
+/* hover 时加亮 */
 .view:not(.hide) .section0 .backdropCard:hover .cardText {
 	transform: translateY(0);
 	opacity: 1;
+}
+
+/* 模式: hover — 仅 hover 时显示 */
+:root[style*='--misty-library-label-mode: hover'] .view:not(.hide) .section0 .cardText,
+:root[style*='--misty-library-label-mode:hover'] .view:not(.hide) .section0 .cardText {
+	transform: translateY(100%);
+	opacity: 0;
+}
+:root[style*='--misty-library-label-mode: hover'] .view:not(.hide) .section0 .backdropCard:hover .cardText,
+:root[style*='--misty-library-label-mode:hover'] .view:not(.hide) .section0 .backdropCard:hover .cardText {
+	transform: translateY(0);
+	opacity: 1;
+}
+
+/* 模式: none — 完全隐藏 */
+:root[style*='--misty-library-label-mode: none'] .view:not(.hide) .section0 .cardText,
+:root[style*='--misty-library-label-mode:none'] .view:not(.hide) .section0 .cardText {
+	display: none;
 }
 
 .view:not(.hide) .section0 .cardText button {
