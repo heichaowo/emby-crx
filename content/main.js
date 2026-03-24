@@ -118,6 +118,8 @@ class Home {
 		<div class="misty-banner">
 			<div class="misty-banner-body">
 			</div>
+			<button class="misty-banner-nav misty-banner-prev" aria-label="Previous">&#10094;</button>
+			<button class="misty-banner-nav misty-banner-next" aria-label="Next">&#10095;</button>
 			<div class="misty-banner-library">
 				<div class="misty-banner-logos"></div>
 			</div>
@@ -126,39 +128,32 @@ class Home {
 		$(".view:not(.hide) .homeSectionsContainer").prepend(banner);
 		// $(".view:not(.hide) .section0").detach().appendTo(".view:not(.hide) .misty-banner-library");
 
-		// 插入数据
+		// 插入数据 — 并行获取所有 item 详情和图片URL, 按原始顺序 append DOM
 		const data = await this.getItems(this.itemQuery);
-		console.log(data);
-		data.Items.forEach(async (item) => {
-			const detail = await this.getItem(item.Id),
-				itemHtml = `
+		const slides = await Promise.all(data.Items.map(async (item) => {
+			const detail = await this.getItem(item.Id);
+			const coverUrl = await this.getImageUrl(detail.Id, this.coverOptions);
+			const logoUrl = await this.getImageUrl(detail.Id, this.logoOptions);
+			return { detail, coverUrl, logoUrl };
+		}));
+
+		for (const { detail, coverUrl, logoUrl } of slides) {
+			const itemHtml = `
 			<div class="misty-banner-item" id="${detail.Id}">
-				<img draggable="false" loading="eager" decoding="async" class="misty-banner-cover" src="${await this.getImageUrl(detail.Id, this.coverOptions)}" alt="Backdrop" style="">
+				<img draggable="false" loading="eager" decoding="async" class="misty-banner-cover" src="${coverUrl}" alt="Backdrop" style="">
 				<div class="misty-banner-info padded-left padded-right">
 					<h1>${detail.Name}</h1>
 					<div><p>${detail.Overview}</p></div>
 					<div><button onclick="appRouter.showItem('${detail.Id}')">MORE</button></div>
 				</div>
 			</div>
-			`,
-				logoHtml = `
-			<img id="${detail.Id}" draggable="false" loading="auto" decoding="lazy" class="misty-banner-logo" data-banner="img-title" alt="Logo" src="${await this.getImageUrl(detail.Id, this.logoOptions)}">
 			`;
 			if (detail.ImageTags && detail.ImageTags.Logo) {
-				$(".misty-banner-logos").append(logoHtml);
+				$(".misty-banner-logos").append(`
+				<img id="${detail.Id}" draggable="false" loading="auto" decoding="lazy" class="misty-banner-logo" data-banner="img-title" alt="Logo" src="${logoUrl}">
+				`);
 			}
 			$(".misty-banner-body").append(itemHtml);
-			console.log(item.Id, detail);
-			// 标记真实幻灯片数量
-			this._realSlideCount = (this._realSlideCount || 0) + 1;
-		});
-
-		// 等待所有幻灯片追加完毕后, 克隆第一张作为幽灵幻灯片（无限滚动幻觉）
-		await CommonUtils.sleep(500);
-		const firstItem = $(".misty-banner-item").first();
-		if (firstItem.length) {
-			const cloneItem = firstItem.clone().addClass("misty-banner-clone").removeAttr("id");
-			$(".misty-banner-body").append(cloneItem);
 		}
 
 		// 只判断第一张海报加载完毕, 优化加载速度
@@ -170,6 +165,14 @@ class Home {
 				}
 			}, 16);
 		});
+
+		// 克隆第一张作为幽灵幻灯片（无限滚动幻觉）, 放在图片加载后确保 slide 已存在
+		const firstItem = $(".misty-banner-item").first();
+		if (firstItem.length) {
+			const cloneItem = firstItem.clone().addClass("misty-banner-clone").removeAttr("id");
+			cloneItem.find(".misty-banner-info").css("visibility", "hidden"); // CR-5: 隐藏克隆的信息面板
+			$(".misty-banner-body").append(cloneItem);
+		}
 
 		// 判断section0加载完毕
 		await new Promise((resolve, reject) => {
@@ -204,40 +207,124 @@ class Home {
 
 		// 滚屏逻辑（无限滚动幻觉）
 		var index = 0;
-		const realCount = this._realSlideCount || $(".misty-banner-item:not(.misty-banner-clone)").length;
-		clearInterval(this.bannerInterval);
-		this.bannerInterval = setInterval(() => {
-			// 背景切换
-			if (window.location.href.endsWith("home") && !document.hidden) {
-				index++;
-				$(".misty-banner-body").css("left", -(index * 100).toString() + "%");
+		var isWrapping = false; // 防抖锁: wrap-around 动画期间屏蔽操作
+		const realCount = $(".misty-banner-item:not(.misty-banner-clone)").length;
+		const $body = $(".misty-banner-body");
+		const startCarousel = () => {
+			clearInterval(this.bannerInterval);
+			this.bannerInterval = setInterval(() => {
+				// 背景切换
+				if (window.location.href.endsWith("home") && !document.hidden) {
+					index++;
+					$body.css("left", -(index * 100).toString() + "%");
 
-				if (index >= realCount) {
-					// 滑入克隆幻灯片（视觉上就是第一张）, 等 transition 结束后瞬间跳回真正的第一张
-					// 信息 & LOGO 切换到第一张
-					$(".misty-banner-item.active").removeClass("active");
-					let firstId = $(".misty-banner-item").eq(0).addClass("active").attr("id");
-					$(".misty-banner-logo.active").removeClass("active");
-					$(`.misty-banner-logo[id=${firstId}]`).addClass("active");
+					if (index >= realCount) {
+						// 滑入克隆幻灯片（视觉上就是第一张）, 等 transition 结束后瞬间跳回真正的第一张
+						// 信息 & LOGO 切换到第一张
+						$(".misty-banner-item.active").removeClass("active");
+						let firstId = $(".misty-banner-item").eq(0).addClass("active").attr("id");
+						$(".misty-banner-logo.active").removeClass("active");
+						$(`.misty-banner-logo[id=${firstId}]`).addClass("active");
 
-					setTimeout(() => {
-						// 关闭过渡, 瞬间跳回位置0
-						$(".misty-banner-body").addClass("misty-banner-notransition");
-						$(".misty-banner-body").css("left", "0%");
-						// 强制回流后重新开启过渡
-						$(".misty-banner-body")[0].offsetHeight;
-						$(".misty-banner-body").removeClass("misty-banner-notransition");
-						index = 0;
-					}, 1600); // 等待 1.5s transition 完成 + 100ms 安全余量
-				} else {
-					// 正常切换
-					$(".misty-banner-item.active").removeClass("active");
-					let id = $(".misty-banner-item").eq(index).addClass("active").attr("id");
-					$(".misty-banner-logo.active").removeClass("active");
-					$(`.misty-banner-logo[id=${id}]`).addClass("active");
+						// 暂停定时器, 防止 reset 期间再次触发
+						clearInterval(this.bannerInterval);
+						setTimeout(() => {
+							// 关闭过渡, 瞬间跳回位置0
+							$body.addClass("misty-banner-notransition");
+							$body.css("left", "0%");
+							// 强制回流后重新开启过渡
+							$body[0].offsetHeight;
+							$body.removeClass("misty-banner-notransition");
+							index = 0;
+							// 重新启动定时器
+							startCarousel();
+						}, 1600); // 等待 1.5s transition 完成 + 100ms 安全余量
+					} else {
+						// 正常切换
+						$(".misty-banner-item.active").removeClass("active");
+						let id = $(".misty-banner-item").eq(index).addClass("active").attr("id");
+						$(".misty-banner-logo.active").removeClass("active");
+						$(`.misty-banner-logo[id=${id}]`).addClass("active");
+					}
 				}
+			}, 10000);
+		};
+		startCarousel();
+
+		// 手动导航：跳转到指定 slide 并重启自动轮播
+		const goToSlide = (targetIndex) => {
+			if (isWrapping) return;
+			clearInterval(this.bannerInterval);
+			index = targetIndex;
+			$body.css("left", -(index * 100).toString() + "%");
+			$(".misty-banner-item.active").removeClass("active");
+			let id = $(".misty-banner-item").eq(index).addClass("active").attr("id");
+			$(".misty-banner-logo.active").removeClass("active");
+			$(`.misty-banner-logo[id=${id}]`).addClass("active");
+			startCarousel();
+		};
+
+		// 通过克隆 slide 实现无缝 wrap-around（前进方向）
+		const wrapForward = () => {
+			if (isWrapping) return;
+			isWrapping = true;
+			clearInterval(this.bannerInterval);
+			index = realCount; // 滑入克隆 slide
+			$body.css("left", -(index * 100).toString() + "%");
+			// 信息 & LOGO 切换到第一张
+			$(".misty-banner-item.active").removeClass("active");
+			let firstId = $(".misty-banner-item").eq(0).addClass("active").attr("id");
+			$(".misty-banner-logo.active").removeClass("active");
+			$(`.misty-banner-logo[id=${firstId}]`).addClass("active");
+			setTimeout(() => {
+				$body.addClass("misty-banner-notransition");
+				$body.css("left", "0%");
+				$body[0].offsetHeight;
+				$body.removeClass("misty-banner-notransition");
+				index = 0;
+				isWrapping = false;
+				startCarousel();
+			}, 1600);
+		};
+
+		// 通过克隆 slide 实现无缝 wrap-around（后退方向）
+		const wrapBackward = () => {
+			if (isWrapping) return;
+			isWrapping = true;
+			clearInterval(this.bannerInterval);
+			// 先瞬间跳到克隆 slide 位置（视觉上就是第一张）
+			$body.addClass("misty-banner-notransition");
+			$body.css("left", -(realCount * 100).toString() + "%");
+			$body[0].offsetHeight;
+			$body.removeClass("misty-banner-notransition");
+			// 然后平滑滑到最后一张真实 slide
+			index = realCount - 1;
+			$body.css("left", -(index * 100).toString() + "%");
+			$(".misty-banner-item.active").removeClass("active");
+			let id = $(".misty-banner-item").eq(index).addClass("active").attr("id");
+			$(".misty-banner-logo.active").removeClass("active");
+			$(`.misty-banner-logo[id=${id}]`).addClass("active");
+			isWrapping = false;
+			startCarousel();
+		};
+
+		// 上一张
+		$(".misty-banner-prev").on("click", () => {
+			if (index <= 0) {
+				wrapBackward();
+			} else {
+				goToSlide(index - 1);
 			}
-		}, 10000);
+		});
+
+		// 下一张
+		$(".misty-banner-next").on("click", () => {
+			if (index >= realCount - 1) {
+				wrapForward();
+			} else {
+				goToSlide(index + 1);
+			}
+		});
 	}
 
 	/* 初始事件 */

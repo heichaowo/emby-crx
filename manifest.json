@@ -1,18 +1,16 @@
 {
-	"manifest_version": 2,
+	"manifest_version": 3,
 	"name": "Emby Tools.",
-	"version": "1.0.4",
+	"version": "1.0.5",
 	"description": "Misty Emby Tools.",
 	"author": "Nolovenodie",
 	"homepage_url": "https://ssky.me",
 	"icons": {
 		"16": "static/img/icon.png",
-		"19": "static/img/icon.png",
-		"38": "static/img/icon.png",
 		"48": "static/img/icon.png",
 		"128": "static/img/icon.png"
 	},
-	"browser_action": {
+	"action": {
 		"default_icon": "static/img/icon.png",
 		"default_title": "Misty Tools."
 	},
@@ -21,8 +19,10 @@
 			"matches": ["<all_urls>"],
 			"css": ["static/css/style.css"],
 			"js": ["static/js/jquery-3.6.0.min.js", "static/js/common-utils.js", "static/js/md5.min.js", "content/main.js"],
-			"run_at": "document_end"
+			"run_at": "document_end",
+			"world": "MAIN"
 		}
 	],
-	"permissions": ["http://*/*", "https://*/*", "<all_urls>"]
+	"host_permissions": ["<all_urls>"]
 }
+
