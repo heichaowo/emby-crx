@@ -61,4 +61,4 @@ _No need to use plugins, deploy directly to the server, users can use it seamles
 - Encapsulate as a single JS/CSS for client use
 - Playback jump to third-party player function
 - Online version detection and update
-
+- Provide an custom Docker image (auto-built via GitHub Actions)
